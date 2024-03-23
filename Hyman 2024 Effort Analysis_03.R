@@ -1,4 +1,18 @@
 #------------------------------------------------------------------------------#
+################################### Description ################################
+#------------------------------------------------------------------------------#
+# This file generates effort analysis and creates all figures and tables found
+# in Hyman et al 2024: Modeling effort in a multispecies recreational fishery; 
+# influence of species-specific temporal closures, relative abundance, and 
+# seasonality on angler-trips
+#
+# Required files can be downloaded directly from github.com via read.csv().
+#
+# The code below is annotated to explain to the user what each component 
+# line executes.
+#
+# This file was written by A. Challen Hyman, PhD, on March 23rd, 2024
+#------------------------------------------------------------------------------#
 ##################################### Libraries ################################
 #------------------------------------------------------------------------------#
 ## Syntax packages
@@ -18,7 +32,7 @@ suppressMessages(library(RColorBrewer))
 
 ## Modeling
 suppressMessages(library(rstan))
-#options(mc.cores = parallel::detectCores())
+suppressMessages(library(cmdstanr))
 suppressMessages(library(forecast))
 
 ## Mapping
@@ -28,14 +42,9 @@ suppressMessages(library(sp))
 
 ## File reading
 suppressMessages(library(readxl))
-#------------------------------------------------------------------------------#
-##################################### Housekeeping #############################
-#------------------------------------------------------------------------------#
+
 ## Clear out old files in R
 rm(list=ls(all=TRUE)) 
-
-## Set working directory
-setwd("C:\\Users\\ichal\\Documents\\Hyman gag grouper models\\Hyman et al 2024b")
 
 #------------------------------------------------------------------------------#
 ##################################### User-defined functions ###################
@@ -79,115 +88,101 @@ My_theme <- function(){
           legend.title = element_text(size = 18)
     )}
 theme_set(My_theme())
-
-
-
 #------------------------------------------------------------------------------#
 ## Load data
-All_Data <- read.csv("MRIP Effort and Catch data.csv")
-
-### Spatial Data
-setwd("C:\\Users\\ichal\\Documents\\Hyman Gag grouper models")                  ## Set WD
-Florida <- st_read("tl_2016_12_cousub.shp", quiet = TRUE)                       ## Florida shapefile with counties
-States <- st_read("cb_2018_us_state_500k.shp",quiet = TRUE)                     ## US Boundary
-D_Florida <- st_read("Detailed_Florida_State_Boundary.shp",quiet = TRUE)        ## Detailed Florida Boundary
-States <- st_transform(States, st_crs(Florida))
-States <- States[-which(States$STATEFP == "12"),]                               ## Removes Florida (replaced with more detailed map)
-
-setwd("C:\\Users\\ichal\\Documents\\Hyman Gag grouper models\\Hyman et al 2024b")
-Complete_data <- read.csv("Hyman et al 2024b Aggregated Data.csv")              ## Complete dataset for all models
-counties <- read.csv("counties.csv")                                            ## County name and fps
-colnames(counties) <- c("Code", "County")
-County_ID <- read.csv("County_ID.csv")                                          ## County ID
-Fishable <- read.csv("Fishable_days_all_03_24.csv")                             ## Fraction of fishable days by region
-
+All_Data <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/MRIP%20Effort%20and%20Catch%20data.csv")
 
 ### Format
 All_Data$Gag_searches <- All_Data$Gag_searches/100
 All_Data$RG_searches <- All_Data$RG_searches/100
 All_Data$RS_searches <- All_Data$RS_searches/100
-All_Data$Snapper_searches <- All_Data$Snapper_searches/100
-All_Data$Grouper_searches <- All_Data$Grouper_searches/100
-All_Data$Bag_RS[which(is.na(All_Data$Bag_RS))] <- 2
-All_Data$Bag_RS[which(is.na(All_Data$Bag_RS))] <- 2
-All_Data$Bag_RG[which(is.na(All_Data$Bag_RG))] <- 2
-All_Data$Region
-
-All_Data$Index_Gag <- All_Data$Index_Gag*All_Data$M_Gag
-All_Data$Index_RG <- All_Data$Index_RG*All_Data$M_RG
-All_Data$Index_RS <- All_Data$Index_RS*All_Data$M_RS
 
 All_Data$A_Gag_e <- All_Data$A_Gag_e*All_Data$M_Gag
 All_Data$A_RG_e<- All_Data$A_RG_e*All_Data$M_RG
 All_Data$A_RS_e <- All_Data$A_RS_e*All_Data$M_RS
-All_Data <- All_Data[,-c(28:30)]
+
+All_Data <- All_Data[,c("Region",
+                        "Trips",
+                        "A_Gag_e",
+                        "A_RG_e",
+                        "A_RS_e",
+                        "M_Gag",
+                        "M_RG",
+                        "M_RS",
+                        "S_GagL",
+                        "S_RGL",
+                        "S_RSL",
+                        "Fishable",
+                        "FIR",
+                        "sin1",
+                        "sin2",
+                        "cos1",
+                        "cos2",
+                        "Gag_searches",
+                        "RG_searches",
+                        "RS_searches")]
 
 ## Set training and testing data
 set.seed(1234)
 Test_data <- sample(1:nrow(All_Data), 50, replace = F)
-
 Test <- All_Data
 Train <- All_Data[-Test_data,]
-#Train <- All_Data[which(All_Data$Date <= as.Date("2022-01-01")),]
-#Train$N_scale <- Train$N/max(Train$N)
-
 Test$Prediction <- "In-sample"
-#Test$Prediction[which(Test$Date >= as.Date("2022-01-01"))] <- "Out-of-sample"
 Test$Prediction[Test_data] <- "Out-of-sample"
 #------------------------------------------------------------------------------#
 ## Run Model
-## Note: Gag = Gag Grouper, RG = Red Grouper, RS = Red Snapper, GS = Gray Snapper
+## Note: Gag = Gag Grouper, RG = Red Grouper, RS = Red Snapper
 ### General Effort
-run_model <- F
-if(run_model ==T){
-  Train_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
-                                    Region*A_RS_e +
-                                    Region*M_Gag + Region*M_RG + 
-                                    Region*M_RS + Region*S_GagL + 
-                                    Region*S_RGL + Region*S_RSL + 
-                                    Region*Fishable + 
-                                    Region*sin1 + Region*sin2 + 
-                                    Region*cos1 + Region*cos2 + 
-                                    Region*Gag_searches + 
-                                    Region*RS_searches + 
-                                    Region*RG_searches + 
-                                    Region*FIR, data = na.omit(Train))
-  
-  Test_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
-                                   Region*A_RS_e +
-                                   Region*M_Gag + Region*M_RG + 
-                                   Region*M_RS + Region*S_GagL + 
-                                   Region*S_RGL + Region*S_RSL + 
-                                   Region*Fishable + 
-                                   Region*sin1 + Region*sin2 + 
-                                   Region*cos1 + Region*cos2 + 
-                                   Region*Gag_searches + 
-                                   Region*RS_searches + 
-                                   Region*RG_searches + 
-                                   Region*FIR, data = na.omit(Test))
-  
-  Train_sigma_matrix <- model.matrix(~ Region, data = na.omit(Train))
-  Test_sigma_matrix <- model.matrix(~ Region, data = na.omit(Test))
-  
-  ## Complete data frame
-  DataList <- list(
-    "T" = nrow(Train_mu_matrix),
-    "OOS" = nrow(Test_mu_matrix),
-    "S" = ncol(Train_sigma_matrix),
-    "E" = ncol(Train_mu_matrix),
-    "Design_effort" = Train_mu_matrix,
-    "Pred_effort" = Test_mu_matrix,
-    "S_eff" = Train_sigma_matrix,
-    "S_pred" = Test_sigma_matrix,
-    "Effort" = log(na.omit(Train)[,4])
-  )
-  N <- 2000
-  Effort_Model <- stan('Effort Complete Model.stan', data = DataList, chains = 1, iter = N, control = list(adapt_delta = 0.99), refresh = max(N/100, 5)) 
-  Effort_Model@stanmodel@dso <- new("cxxdso")
-  saveRDS(Effort_Model, file = "Effort_Model_03.rds")
-} else {
-  Effort_Model <- readRDS("Effort_Model_03.rds")
-}
+Train_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
+                                  Region*A_RS_e +
+                                  Region*M_Gag + Region*M_RG + 
+                                  Region*M_RS + Region*S_GagL + 
+                                  Region*S_RGL + Region*S_RSL + 
+                                  Region*Fishable + 
+                                  Region*sin1 + Region*sin2 + 
+                                  Region*cos1 + Region*cos2 + 
+                                  Region*Gag_searches + 
+                                  Region*RS_searches + 
+                                  Region*RG_searches + 
+                                  Region*FIR, data = na.omit(Train))
+
+Test_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
+                                 Region*A_RS_e +
+                                 Region*M_Gag + Region*M_RG + 
+                                 Region*M_RS + Region*S_GagL + 
+                                 Region*S_RGL + Region*S_RSL + 
+                                 Region*Fishable + 
+                                 Region*sin1 + Region*sin2 + 
+                                 Region*cos1 + Region*cos2 + 
+                                 Region*Gag_searches + 
+                                 Region*RS_searches + 
+                                 Region*RG_searches + 
+                                 Region*FIR, data = na.omit(Test))
+
+Train_sigma_matrix <- model.matrix(~ Region, data = na.omit(Train))
+Test_sigma_matrix <- model.matrix(~ Region, data = na.omit(Test))
+
+## Complete data frame
+DataList <- list(
+  "T" = nrow(Train_mu_matrix),
+  "OOS" = nrow(Test_mu_matrix),
+  "S" = ncol(Train_sigma_matrix),
+  "E" = ncol(Train_mu_matrix),
+  "Design_effort" = Train_mu_matrix,
+  "Pred_effort" = Test_mu_matrix,
+  "S_eff" = Train_sigma_matrix,
+  "S_pred" = Test_sigma_matrix,
+  "Effort" = log(na.omit(Train)[,2])
+)
+N <- 200
+Effort_Model_URL <- url("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Effort%20Complete%20Model.stan")
+Effort_Model_txt <- readLines(Effort_Model_URL)
+Effort_Model_tmpf <- write_stan_file(Effort_Model_txt)
+
+Effort_Model <- stan(Effort_Model_tmpf, data = DataList, chains = 1, iter = N, control = list(adapt_delta = 0.99), refresh = max(N/100, 5)) 
+Effort_Model@stanmodel@dso <- new("cxxdso")
+saveRDS(Effort_Model, file = "Effort_Model.rds")  
+
 
 Train <- na.omit(Train)
 Mod <- rstan::extract(Effort_Model)
@@ -195,184 +190,111 @@ Train$E_mean <- exp(apply(Mod$pred_Effort, 2, median))
 Train$E_min  <- exp(apply(Mod$pred_Effort, 2, function(x){quantile(x, 0.1)}))
 Train$E_max  <- exp(apply(Mod$pred_Effort, 2, function(x){quantile(x, 0.9)}))
 
-generated <- TRUE
-if(generated == F){
-  #------------------------------------------------------------------------------#
-  ## Figure 1
-  ### Aggregate Trip data to year for each species
-  Trip_data <- data.frame(
-    Weight = c(Complete_data$wp_int, Complete_data$wp_int),
-    Party = c(Complete_data$party, Complete_data$party),
-    Year = c(Complete_data$year, Complete_data$year),
-    Species = c(Complete_data$prim1_common, Complete_data$prim2_common)
-  ) %>% group_by(Species, Year)%>%
-    summarize(Trips = sum(Weight*Party))
-  
-  Trip_Data <- Trip_data[which(Trip_data$Species %in% tolower(c("GAG", "RED GROUPER", "RED SNAPPER", "GRAY SNAPPER", "GREATER AMBERJACK", "VERMILION SNAPPER", "YELLOWTAIL SNAPPER", "GRAY TRIGGERFISH", "LANE SNAPPER", "MUTTON SNAPPER", "LESSER AMBERJACK", "ALMACO JACK", "BANDED RUDDERFISH", "HOGFISH", "GOLDEN TILEFISH", "BLUELINE TILEFISH", "GOLDFACE TILEFISH", "SCAMP", "BLACK GROUPER", "YELLOWEDGE GROUPER", "SNOWY GROUPER", "SPECKLED HIND", "YELLOWMOUTH GROUPER", "YELLOWFIN GROUPER", "WARSAW GROUPER",
-                                                                "GOLIATH GROUPER", "QUEEN SNAPPER", "BLACKFIN SNAPPER", "CUBERA SNAPPER", "SILK SNAPPER", "WENCHMAN")
-  )),]
-  
-  Common <- c("RS", "GS","RG", "Gag", "YS", "VS", "LS", "GT", "GA", "HF", 
-              "MS", "SC", "BG", "AJ","BR", "GG", "BT", "SG", "SH", "SS", "LA", 
-              "YEG", "WG", "CS", "BS", "QS", "RHF", "SHF", "SPHF", "YFG", "YMG")
-  
-  
-  
-  
-  Spe_labs <- levels(as.factor(Trip_Data$Species))
-  Common <- gsub('\\b(\\pL)\\pL{2,}|.','\\U\\1',Spe_labs,perl = TRUE)
-  Common[7] <- "Gag"
-  Trip_Data$Common <- Common[match(Trip_Data$Species, Spe_labs)]
-  Trip_Data$Species <- paste0(Trip_Data$Species," (", Trip_Data$Common, ")")
-  Trip_Data$Species <- Trip_Data$Species%>%as.factor(.)%>%factor(., levels = paste0(Spe_labs," (", Common, ")"))
-  Trip_Data$Common <- Trip_Data$Common%>%as.factor(.)%>%factor(., levels = Common)
-  
-  
-  Trip_Data$Species <- Trip_Data$Species%>%as.factor(.)%>%factor(., levels = names(sort(tapply(Trip_Data$Trips, Trip_Data$Species, median), decreasing = T)))
-  Trip_Data$Common <- Trip_Data$Common%>%as.factor(.)%>%factor(., levels = names(sort(tapply(Trip_Data$Trips, Trip_Data$Common, median), decreasing = T)))
-  
-  
-  
-  ggplot(Trip_Data)+
-    geom_boxplot(aes(x = Common, y = Trips, fill = Species)) +
-    theme(legend.position = "bottom", 
-          axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5),
-          axis.text = element_text(size = 11, color = 1),
-          strip.text = element_text(size = 12, margin = margin(0.2,0, 0.2,0, "cm")),
-          axis.title = element_text(size = 12),
-          legend.text = element_text(size = 11),
-          legend.title = element_text(size = 12))+
-    xlab("Species")+ylab("Annual anlger-trips")+labs(fill = "Key")+guides(fill = guide_legend(ncol = 4))
-  ggsave("Hyman Figure Trips.png", dpi = 600, device = "png")
-}
-  #------------------------------------------------------------------------------#
-  ## Figure 2
-  ### Assign county ID's to Florida shapefile
-  reg_1 <- (c(123,129,29,33,37,45,5,91,113,131))                             ## Manually specify counties in fl_reg 1
-  reg_2 <- (c(101,103,115,15,17,21,53,71,75,81,57))                          ## Manually specify counties in fl_reg 2
-  Florida <- Florida %>% group_by(COUNTYFP)%>%summarize()
-  Florida$SR <- NA
-  Florida$SR[which(as.numeric(Florida$COUNTYFP) %in% reg_1)] <- "Panhandle"
-  Florida$SR[which(as.numeric(Florida$COUNTYFP) %in% reg_2)] <- "Peninsula"
-  Florida$SR[which(Florida$COUNTYFP == "065")]<- "Panhandle"
-  
-  Stations <- Fishable%>%group_by(lat, lon, Region, Buoy)%>%summarise()
-  coordinates(Stations) =~lon + lat
-  proj4string(Stations) = CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0')
-  Stations <- st_as_sf(Stations)
-  Stations <- Stations[!duplicated(Stations$Buoy),]
-  Stations$SR <- "Panhandle"
-  Stations$SR[which(Stations$Region==2)] <- "Peninsula"
-  Stations$SR[which(Stations$Buoy== "CKYF1")] <- "Peninsula" 
-  Map <- ggplot(Florida)+
-    geom_sf(data = st_as_sf(States), fill = "grey", lwd = 0.1) +
-    geom_sf(fill = "grey", alpha = 0.5)+
-    geom_sf(aes(fill = SR), alpha = 0.5)+scale_fill_manual(values = c("darkorchid4", "seagreen", "goldenrod4"), na.value="grey90", na.translate = F) +
-    scale_x_continuous("Longitude")+scale_y_continuous("Latitude") +
-    geom_point(data = Stations, aes(col = SR, geometry = geometry),stat = "sf_coordinates", size= 4, show.legend = F)+
-    geom_label(data = Stations, aes(label = Buoy, geometry = geometry),
-               stat = "sf_coordinates", size= 4, show.legend = F, family = 'serif', 
-              position = position_nudge(y = c(-0.2,                             ## NPSF1  
-                                              -0.2,                             ## VENF1
-                                              -0.2,                             ## 42098  
-                                              0,                                ## CWBF1  
-                                              0.1,                              ## FHPF1   
-                                              0,                                ## ARPF1   
-                                              -0.2,                             ## CKYF1
-                                              -0.3,                             ## APCF1
-                                              -0.2,                             ## KTNF1
-                                               0.2,                             ## SHPF1
-                                              -0.2,                             ## PACF1
-                                               0.2,                             ## PCBF1
-                                              -0.2),                            ## PCLF1 
-                                        x = c(-0.2,                             ## NPSF1  
-                                              -0.2,                             ## VENF1
-                                              -0.2,                             ## 42098  
-                                              -0.4,                             ## CWBF1  
-                                              -0.4,                             ## FHPF1   
-                                              -0.4,                             ## ARPF1   
-                                              -0.2,                             ## CKYF1
-                                              -0.1,                             ## APCF1
-                                              -0.1,                             ## KTNF1
-                                                 0,                             ## SHPF1
-                                              -0.4,                             ## PACF1
-                                                 0,                             ## PCBF1
-                                              -0.2)))+                          ## PCLF1 
-    scale_color_manual(values = c("darkorchid4", "seagreen", "goldenrod4"), na.value="grey90", na.translate = F) +
-    coord_sf(xlim = st_bbox(Florida)[c(1,3)]- c(0,0), ylim = c(st_bbox(Florida)[c(2,4)])) + 
-    labs(fill = "Region") +
-    theme(legend.title=element_text(size=14),
-          legend.text=element_text(size=12),
-          panel.grid = element_blank(),
-          plot.title = element_text(hjust = 0.5),
-          plot.subtitle  = element_text(hjust = 0.5),
-          legend.position = "top")
-  
-  Map
-  ggsave("Hyman Figure 2.png", device = "png", dpi = 600)
-#------------------------------------------------------------------------------#
-## Figure  S1
-run_diag = T
-if(run_diag ==T){
-  len <- dim(Mod$pred_Effort)[1]
-  Effort_diag <- Mod$pred_Effort%>%t()%>%as.data.frame()%>%cbind(.,Train$Region)%>%
-    pivot_longer(., cols = c(1:len), names_to = "scan", values_to = "value")
-  colnames(Effort_diag)[1]<- "Region"
-  
-  colors <- c("Predicted" = "#4575B4", "Observed" = "black")
-  Effort_diag$limit <- c(2e7, 2.5e7)[match(Effort_diag$Region,c("Panhandle", "Peninsula"))]
-  Effort_diag <- Effort_diag%>%group_by(Region)%>%filter(exp(value) < limit)
-  
-  Effort_diagnostics_dens <- ggplot(Train)+
-    geom_line(data = Effort_diag, aes(x = exp(value), group = scan, col = "Predicted"),stat = 'density', alpha = 0.1, show.legend = F)+
-    geom_density(aes(x = Trips, col = 'Observed'), lwd = 1, show.legend = F)+
-    scale_color_manual(values = colors)+
-    xlab("Effort (angler-trips)")+ylab("")+
-    facet_wrap(~Region, scales = "free", ncol = 1)+Supplemental_theme()+
-    scale_x_continuous(labels = function(x) format(x, scientific = TRUE))+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  
-  Effort_diagnostics_scatter <- ggplot(Train)+
-    geom_point(aes(x = E_mean, y = Trips), alpha = 0.4, col = "#4575B4")+
-    #geom_smooth(aes(x = exp(Effort_diag), y = Trips), method = "lm", formula = y~0+x)+
-    geom_abline(lwd = 1)+
-    xlab("Effort (angler-trips)")+ylab("")+
-    facet_wrap(~Region, scales = "free", ncol = 1)+Supplemental_theme()+
-    scale_x_continuous(labels = function(x) format(x, scientific = TRUE))+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  
-  ## Temporal autocorrelation
-  Train$resid <- Train$Trips-Train$E_mean
-  Effort_diagnostics_Pacf <- ggPacf(Train$resid)+ggtitle("")
-  Train <- na.omit(Train)
-  df_acf <- Train %>% 
-    group_by(Region) %>% 
-    summarise(list_acf=list(pacf(resid, plot=FALSE))) %>%
-    mutate(acf_vals=purrr::map(list_acf, ~as.numeric(.x$acf))) %>% 
-    select(-list_acf) %>% 
-    unnest() %>% 
-    group_by(Region) %>% 
-    mutate(lag=row_number() - 1)
-  
-  df_ci <- Train %>% 
-    group_by(Region) %>% 
-    summarise(ci = qnorm((1 + 0.9)/2)/sqrt(n()))
-  
-  Effort_diagnostics_pacf <- ggplot(df_acf, aes(x=lag, y=acf_vals)) +
-    geom_bar(stat="identity", width=.05) +
-    geom_hline(yintercept = 0) +
-    geom_hline(data = df_ci, aes(yintercept = -ci), color="blue", linetype="dotted") +
-    geom_hline(data = df_ci, aes(yintercept = ci), color="blue", linetype="dotted") +
-    labs(x="Lag", y="PACF") +
-    facet_wrap(~Region, ncol = 1)+Supplemental_theme()
-  
-  
-  ggarrange(Effort_diagnostics_scatter,Effort_diagnostics_dens, Effort_diagnostics_pacf, ncol = 3, labels = c("a)", "b)", "c)"))
-  ggsave("Hyman Figure S1.png", dpi = 600, device = "png")
-}
 
 #------------------------------------------------------------------------------#
-## Figure  3 and 4
+## Figure 1
+### Aggregate Trip data to year for each species
+Trip_data <- data.frame(
+  Weight = c(Complete_data$wp_int, Complete_data$wp_int),
+  Party = c(Complete_data$party, Complete_data$party),
+  Year = c(Complete_data$year, Complete_data$year),
+  Species = c(Complete_data$prim1_common, Complete_data$prim2_common)
+) %>% group_by(Species, Year)%>%
+  summarize(Trips = sum(Weight*Party))
+
+Trip_Data <- Trip_data[which(Trip_data$Species %in% tolower(c("GAG", "RED GROUPER", "RED SNAPPER", "GRAY SNAPPER", "GREATER AMBERJACK", "VERMILION SNAPPER", "YELLOWTAIL SNAPPER", "GRAY TRIGGERFISH", "LANE SNAPPER", "MUTTON SNAPPER", "LESSER AMBERJACK", "ALMACO JACK", "BANDED RUDDERFISH", "HOGFISH", "GOLDEN TILEFISH", "BLUELINE TILEFISH", "GOLDFACE TILEFISH", "SCAMP", "BLACK GROUPER", "YELLOWEDGE GROUPER", "SNOWY GROUPER", "SPECKLED HIND", "YELLOWMOUTH GROUPER", "YELLOWFIN GROUPER", "WARSAW GROUPER",
+                                                              "GOLIATH GROUPER", "QUEEN SNAPPER", "BLACKFIN SNAPPER", "CUBERA SNAPPER", "SILK SNAPPER", "WENCHMAN")
+)),]
+
+Common <- c("RS", "GS","RG", "Gag", "YS", "VS", "LS", "GT", "GA", "HF", 
+            "MS", "SC", "BG", "AJ","BR", "GG", "BT", "SG", "SH", "SS", "LA", 
+            "YEG", "WG", "CS", "BS", "QS", "RHF", "SHF", "SPHF", "YFG", "YMG")
+
+Spe_labs <- levels(as.factor(Trip_Data$Species))
+Common <- gsub('\\b(\\pL)\\pL{2,}|.','\\U\\1',Spe_labs,perl = TRUE)
+Common[7] <- "Gag"
+Trip_Data$Common <- Common[match(Trip_Data$Species, Spe_labs)]
+Trip_Data$Species <- paste0(Trip_Data$Species," (", Trip_Data$Common, ")")
+Trip_Data$Species <- Trip_Data$Species%>%as.factor(.)%>%factor(., levels = paste0(Spe_labs," (", Common, ")"))
+Trip_Data$Common <- Trip_Data$Common%>%as.factor(.)%>%factor(., levels = Common)
+
+
+Trip_Data$Species <- Trip_Data$Species%>%as.factor(.)%>%factor(., levels = names(sort(tapply(Trip_Data$Trips, Trip_Data$Species, median), decreasing = T)))
+Trip_Data$Common <- Trip_Data$Common%>%as.factor(.)%>%factor(., levels = names(sort(tapply(Trip_Data$Trips, Trip_Data$Common, median), decreasing = T)))
+
+
+
+ggplot(Trip_Data)+
+  geom_boxplot(aes(x = Common, y = Trips, fill = Species)) +
+  theme(legend.position = "bottom", 
+        axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5),
+        axis.text = element_text(size = 11, color = 1),
+        strip.text = element_text(size = 12, margin = margin(0.2,0, 0.2,0, "cm")),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 11),
+        legend.title = element_text(size = 12))+
+  xlab("Species")+ylab("Annual anlger-trips")+labs(fill = "Key")+guides(fill = guide_legend(ncol = 4))
+ggsave("Hyman Figure 1.png", dpi = 600, device = "png")  
+#------------------------------------------------------------------------------#
+## Figure  S1
+len <- dim(Mod$pred_Effort)[1]
+Effort_diag <- Mod$pred_Effort%>%t()%>%as.data.frame()%>%cbind(.,Train$Region)%>%
+  pivot_longer(., cols = c(1:len), names_to = "scan", values_to = "value")
+colnames(Effort_diag)[1]<- "Region"
+
+colors <- c("Predicted" = "#4575B4", "Observed" = "black")
+Effort_diag$limit <- c(2e7, 2.5e7)[match(Effort_diag$Region,c("Panhandle", "Peninsula"))]
+Effort_diag <- Effort_diag%>%group_by(Region)%>%filter(exp(value) < limit)
+
+Effort_diagnostics_dens <- ggplot(Train)+
+  geom_line(data = Effort_diag, aes(x = exp(value), group = scan, col = "Predicted"),stat = 'density', alpha = 0.1, show.legend = F)+
+  geom_density(aes(x = Trips, col = 'Observed'), lwd = 1, show.legend = F)+
+  scale_color_manual(values = colors)+
+  xlab("Effort (angler-trips)")+ylab("")+
+  facet_wrap(~Region, scales = "free", ncol = 1)+Supplemental_theme()+
+  scale_x_continuous(labels = function(x) format(x, scientific = TRUE))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+Effort_diagnostics_scatter <- ggplot(Train)+
+  geom_point(aes(x = E_mean, y = Trips), alpha = 0.4, col = "#4575B4")+
+  #geom_smooth(aes(x = exp(Effort_diag), y = Trips), method = "lm", formula = y~0+x)+
+  geom_abline(lwd = 1)+
+  xlab("Effort (angler-trips)")+ylab("")+
+  facet_wrap(~Region, scales = "free", ncol = 1)+Supplemental_theme()+
+  scale_x_continuous(labels = function(x) format(x, scientific = TRUE))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Temporal autocorrelation
+Train$resid <- Train$Trips-Train$E_mean
+Effort_diagnostics_Pacf <- ggPacf(Train$resid)+ggtitle("")
+Train <- na.omit(Train)
+df_acf <- Train %>% 
+  group_by(Region) %>% 
+  summarise(list_acf=list(pacf(resid, plot=FALSE))) %>%
+  mutate(acf_vals=purrr::map(list_acf, ~as.numeric(.x$acf))) %>% 
+  select(-list_acf) %>% 
+  unnest() %>% 
+  group_by(Region) %>% 
+  mutate(lag=row_number() - 1)
+
+df_ci <- Train %>% 
+  group_by(Region) %>% 
+  summarise(ci = qnorm((1 + 0.9)/2)/sqrt(n()))
+
+Effort_diagnostics_pacf <- ggplot(df_acf, aes(x=lag, y=acf_vals)) +
+  geom_bar(stat="identity", width=.05) +
+  geom_hline(yintercept = 0) +
+  geom_hline(data = df_ci, aes(yintercept = -ci), color="blue", linetype="dotted") +
+  geom_hline(data = df_ci, aes(yintercept = ci), color="blue", linetype="dotted") +
+  labs(x="Lag", y="PACF") +
+  facet_wrap(~Region, ncol = 1)+Supplemental_theme()
+
+
+ggarrange(Effort_diagnostics_scatter,Effort_diagnostics_dens, Effort_diagnostics_pacf, ncol = 3, labels = c("a)", "b)", "c)"))
+ggsave("Hyman Figure S1.png", dpi = 600, device = "png")
+
+#------------------------------------------------------------------------------#
+## Figure  4 and 5
 ### Effort
 ggplot(Train)+
   geom_line(aes(x = as.Date(Date), y = (Trips)),show.legend = FALSE)+
@@ -386,7 +308,7 @@ ggplot(Train)+
   scale_size(range=c(1,4))+
   scale_y_continuous(labels = function(x) format(x, scientific = TRUE))+
   Supplemental_theme()
-ggsave("Hyman Figure 3 2024.png", device = "png", dpi = 600)
+ggsave("Hyman Figure 4 2024.png", device = "png", dpi = 600)
 
 Test <- na.omit(Test)
 Test$Date <- as.Date(Test$Date)
@@ -413,7 +335,7 @@ ggplot(Test_plot)+
 
 Test_plot%>%
   summarize(perc = length(which(Status == "Within"))/length(Status))
-ggsave("Hyman Figure 4 2024.png", device = "png", dpi = 600)
+ggsave("Hyman Figure 5 2024.png", device = "png", dpi = 600)
 
 
 Test$Good <- ifelse(Test$Trips >= Test$E_min & Test$Trips <= Test$E_max, 1, 0)
@@ -422,6 +344,10 @@ Test%>%group_by(Prediction, Region)%>%
   summarise(nominal = mean(Good))
 #------------------------------------------------------------------------------#
 ## Effort Tables
+# NOTE: Data genertaed here are taken and subsequently inserted into latex 
+# tables produced in overleaf. The code below replicates the raw values but does
+# not create the complete data files needed (i.e., it doesn't create the 
+# decriptions).
 Train_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
                                   Region*A_RS_e +
                                   Region*M_Gag + Region*M_RG + 
@@ -466,59 +392,59 @@ Betas <- apply(betas, 2, function(x){
 
 Effort_comp_beta <- c("$\\mu$", rep("", 37))
 Effort_names_beta <- c("$PH$", "$PN$",
-                  "$A_{Gag_{e}}$", 
-                  "$PN:A_{Gag_{e}}$", 
-                  
-                  "$A_{RG_{e}}$",
-                  "$PN:A_{RG_{e}}$",
-                  
-                  "$A_{RS_{e}}$",
-                  "$PN:A_{RS_{e}}$",
-                  
-                  "$M_{Gag}$",
-                  "$PN:M_{Gag}$", 
-                  
-                  "$PH:M_{RG}$", 
-                  "$PN:M_{RG}$",
-                  
-                  "$M_{RS}$",
-                  "$PN:M_{RS}$",
-                  
-                  "$S_{Gag}$",
-                  "$PN:S_{Gag}$",
-                  
-                  "$S_{RG}$", 
-                  "$PH:S_{RG}$", 
-                  
-                  "$S_{RS}$",
-                  "$PN:S_{RS}$",
-                  
-                  "$G_{Gag}$", 
-                  "$PN:G_{Gag}$",
-                  
-                  "$G_{RG}$",  
-                  "$PN:G_{RG}$",
-                  
-                  "$G_{RS}$",  
-                  "$PN:G_{RS}$",
-                  
-                  "$R$", 
-                  "$PN:R$",
-                  
-                  "$Fish$", 
-                  "$PN:Fish$", 
-                  
-                  "$sin_{12}$",
-                  "$PN:sin_{12}$", 
-                  
-                  "$cos_{12}$", 
-                  "$PN:cos_{12}$",
-                  
-                  "$sin_{6}$",
-                  "$PN:sin_{6}$",
-                  
-                  "$cos_{6}$",
-                  "$PN:cos_{6}$")
+                       "$A_{Gag_{e}}$", 
+                       "$PN:A_{Gag_{e}}$", 
+                       
+                       "$A_{RG_{e}}$",
+                       "$PN:A_{RG_{e}}$",
+                       
+                       "$A_{RS_{e}}$",
+                       "$PN:A_{RS_{e}}$",
+                       
+                       "$M_{Gag}$",
+                       "$PN:M_{Gag}$", 
+                       
+                       "$PH:M_{RG}$", 
+                       "$PN:M_{RG}$",
+                       
+                       "$M_{RS}$",
+                       "$PN:M_{RS}$",
+                       
+                       "$S_{Gag}$",
+                       "$PN:S_{Gag}$",
+                       
+                       "$S_{RG}$", 
+                       "$PH:S_{RG}$", 
+                       
+                       "$S_{RS}$",
+                       "$PN:S_{RS}$",
+                       
+                       "$G_{Gag}$", 
+                       "$PN:G_{Gag}$",
+                       
+                       "$G_{RG}$",  
+                       "$PN:G_{RG}$",
+                       
+                       "$G_{RS}$",  
+                       "$PN:G_{RS}$",
+                       
+                       "$R$", 
+                       "$PN:R$",
+                       
+                       "$Fish$", 
+                       "$PN:Fish$", 
+                       
+                       "$sin_{12}$",
+                       "$PN:sin_{12}$", 
+                       
+                       "$cos_{12}$", 
+                       "$PN:cos_{12}$",
+                       
+                       "$sin_{6}$",
+                       "$PN:sin_{6}$",
+                       
+                       "$cos_{6}$",
+                       "$PN:cos_{6}$")
 Effort_params_beta <- c(paste0("$\\beta_{",0:37,"}$"))
 
 Effort_supplemental_table1 <- cbind(Effort_names_beta, Effort_params_beta, Betas)
@@ -592,8 +518,6 @@ Beta_main_table <- cbind(PH_Beta_names, Betas_main_PH,
 print(xtable(Beta_main_table),only.contents=TRUE, include.rownames=FALSE, 
       include.colnames=T, floating=F, sanitize.rownames.function = identity,
       sanitize.text.function = identity)
-
-
 
 rhos <- Mod$tau_effort%>%as.matrix()%>%as.data.frame()
 colnames(rhos) <- c("PH", "PN")
