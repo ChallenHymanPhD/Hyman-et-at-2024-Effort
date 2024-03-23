@@ -1,4 +1,4 @@
-
+### Code to obtain fraction of Fishable days in Hyman et al 2024
 library(rnoaa)
 library(tidyverse)
 # Suppress summarise info
@@ -22,9 +22,8 @@ Buoys <- c("42012",
            "VENF1",
            "BCGF1",
            "NPSF1")
-
+## Set MRIP FL_reg region (in buoy order)
 Region <- c(1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2)
-SRFS <- c(1,1,1,1,1,2,2,2,2,3,3,3,3,3,3,3)
 Full_Data <- NULL
 for(j in 1:length(Buoys)){
   my_buoy <- Buoys[j]
@@ -40,7 +39,6 @@ for(j in 1:length(Buoys)){
                   height = mean(wave_height, na.rm = T))
       data$Buoy <- my_buoy
       data$Region <- Region[j]
-      data$SRFS <- SRFS[j]
       Full_Data <- rbind(Full_Data,data) ## bind to dataset
     }
     print(paste("Buoy", my_buoy, "in year", i, "is complete"))
@@ -54,11 +52,3 @@ Fishable <- Full_Data%>%group_by(Date, Region)%>%
             Height = mean(height, na.rm = T))
 
 write.csv(Fishable, "Fishable_days_MRIP_03_24.csv")
-
-
-Fishable_SRFS <- Full_Data%>%group_by(Date, SRFS)%>%
-  summarize(Speed = mean(speed, na.rm = T),
-            Height = mean(height, na.rm = T))
-
-write.csv(Fishable_SRFS, "Fishable_days_SRFS_03_24.csv")
-
