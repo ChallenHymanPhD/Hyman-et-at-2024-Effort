@@ -45,9 +45,6 @@ GDP <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2
 Income <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Income.csv")                                 ## Florida median income
 Inflation <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Inflation%20rate.csv")                    ## US inflation rate
 Fishable <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Fishable_days_MRIP_03_24.csv")             ## Fraction of fishable days by region
-County_ID <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/County_ID.csv")                           ## County ID
-counties <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Counties.csv")                             ## County name and fps
-colnames(counties) <- c("Code", "County")
 Gag_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Gag_searches.csv")                     ## Google searches for gag
 RG_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/RG_searches.csv")                       ## Google searches for red grouper
 RS_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/RS_searches.csv")                       ## Google searches for red snapper
