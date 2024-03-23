@@ -14,7 +14,7 @@ data {
 parameters {
   vector[E] beta;                                                               // Coefficients for Effort model
   vector[S] tau_effort;                                                         // Noise terms for effort model (log-scale)
-  vector[2] omega;
+  vector[2] omega;                                                              // Region-specific effects of mean on noise term
 }
 
 transformed parameters {
