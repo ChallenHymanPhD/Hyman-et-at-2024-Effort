@@ -174,12 +174,12 @@ DataList <- list(
   "S_pred" = Test_sigma_matrix,
   "Effort" = log(na.omit(Train)[,2])
 )
-N <- 200
+N <- 2000
 Effort_Model_URL <- url("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Effort%20Complete%20Model.stan")
 Effort_Model_txt <- readLines(Effort_Model_URL)
 Effort_Model_tmpf <- write_stan_file(Effort_Model_txt)
 
-Effort_Model <- stan(Effort_Model_tmpf, data = DataList, chains = 1, iter = N, control = list(adapt_delta = 0.99), refresh = max(N/100, 5)) 
+Effort_Model <- stan(Effort_Model_tmpf, data = DataList, chains = 4, iter = N, control = list(adapt_delta = 0.99), refresh = max(N/100, 5)) 
 Effort_Model@stanmodel@dso <- new("cxxdso")
 saveRDS(Effort_Model, file = "Effort_Model.rds")  
 
