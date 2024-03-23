@@ -1,20 +1,3 @@
-test = F
-## Hyman's test code to check viability of function
-if(test==T){
-  species <- c("GAG", "RED GROUPER", "RED SNAPPER", "GRAY SNAPPER", "GREATER AMBERJACK", "VERMILION SNAPPER", "YELLOWTAIL SNAPPER", "GRAY TRIGGERFISH", "LANE SNAPPER", "MUTTON SNAPPER", "LESSER AMBERJACK", "ALMACO JACK", "BANDED RUDDERFISH", "HOGFISH", "GOLDEN TILEFISH", "BLUELINE TILEFISH", "GOLDFACE TILEFISH", "SCAMP", "BLACK GROUPER", "YELLOWEDGE GROUPER", "SNOWY GROUPER", "SPECKLED HIND", "YELLOWMOUTH GROUPER", "YELLOWFIN GROUPER", "WARSAW GROUPER",
-               "GOLIATH GROUPER", "QUEEN SNAPPER", "BLACKFIN SNAPPER", "CUBERA SNAPPER", "SILK SNAPPER", "WENCHMAN")
-  m <- c(paste("0", 1:9, sep = ""), "10", "11", "12")
-  intdir = 'C:/Users/ichal/Documents/Hyman gag grouper models/MRIP data'
-  common = species
-  st = 12
-  y = 2008
-  styr = y
-  endyr = 2008
-  trips = 1
-  dom = list(month = c(m), fl_reg = c("1", "2"))
-}
-
-
 MRIP.dirtrips<-function(intdir=NULL,common=NULL, st=NULL,styr=NULL,
                         endyr=NULL, trips=1,dom=NULL){
   # Gary Nelson, Massachusetts Division of Marine Fisheries
