@@ -120,7 +120,9 @@ All_Data <- All_Data[,c("Region",
                         "cos2",
                         "Gag_searches",
                         "RG_searches",
-                        "RS_searches")]
+                        "RS_searches",
+                        "Grouper_searches",
+                        "Snapper_searches)]
 
 ## Set training and testing data
 set.seed(1234)
@@ -141,9 +143,8 @@ Train_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
                                   Region*Fishable + 
                                   Region*sin1 + Region*sin2 + 
                                   Region*cos1 + Region*cos2 + 
-                                  Region*Gag_searches + 
-                                  Region*RS_searches + 
-                                  Region*RG_searches + 
+                                  Region*Grouper_searches + 
+                                  Region*Snapper_searches + 
                                   Region*FIR, data = na.omit(Train))
 
 Test_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
@@ -154,9 +155,9 @@ Test_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
                                  Region*Fishable + 
                                  Region*sin1 + Region*sin2 + 
                                  Region*cos1 + Region*cos2 + 
-                                 Region*Gag_searches + 
-                                 Region*RS_searches + 
-                                 Region*RG_searches + 
+                                 Region*Grouper_searches + 
+                                 Region*Snapper_searches + 
+                                 Region*FIR, data = na.omit(Test))
                                  Region*FIR, data = na.omit(Test))
 
 Train_sigma_matrix <- model.matrix(~ Region, data = na.omit(Train))
@@ -175,7 +176,7 @@ DataList <- list(
   "Effort" = log(na.omit(Train)[,2])
 )
 N <- 2000
-Effort_Model_URL <- url("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Effort%20Complete%20Model.stan")
+Effort_Model_URL <- url("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Stan-files/Effort%20Complete%20Model.stan")
 Effort_Model_txt <- readLines(Effort_Model_URL)
 Effort_Model_tmpf <- write_stan_file(Effort_Model_txt)
 
@@ -185,56 +186,13 @@ saveRDS(Effort_Model, file = "Effort_Model.rds")
 
 
 Train <- na.omit(Train)
+
+## Extract model scans and parameter estimates
 Mod <- rstan::extract(Effort_Model)
 Train$E_mean <- exp(apply(Mod$pred_Effort, 2, median))
 Train$E_min  <- exp(apply(Mod$pred_Effort, 2, function(x){quantile(x, 0.1)}))
 Train$E_max  <- exp(apply(Mod$pred_Effort, 2, function(x){quantile(x, 0.9)}))
 
-
-#------------------------------------------------------------------------------#
-## Figure 1
-### Aggregate Trip data to year for each species
-Trip_data <- data.frame(
-  Weight = c(Complete_data$wp_int, Complete_data$wp_int),
-  Party = c(Complete_data$party, Complete_data$party),
-  Year = c(Complete_data$year, Complete_data$year),
-  Species = c(Complete_data$prim1_common, Complete_data$prim2_common)
-) %>% group_by(Species, Year)%>%
-  summarize(Trips = sum(Weight*Party))
-
-Trip_Data <- Trip_data[which(Trip_data$Species %in% tolower(c("GAG", "RED GROUPER", "RED SNAPPER", "GRAY SNAPPER", "GREATER AMBERJACK", "VERMILION SNAPPER", "YELLOWTAIL SNAPPER", "GRAY TRIGGERFISH", "LANE SNAPPER", "MUTTON SNAPPER", "LESSER AMBERJACK", "ALMACO JACK", "BANDED RUDDERFISH", "HOGFISH", "GOLDEN TILEFISH", "BLUELINE TILEFISH", "GOLDFACE TILEFISH", "SCAMP", "BLACK GROUPER", "YELLOWEDGE GROUPER", "SNOWY GROUPER", "SPECKLED HIND", "YELLOWMOUTH GROUPER", "YELLOWFIN GROUPER", "WARSAW GROUPER",
-                                                              "GOLIATH GROUPER", "QUEEN SNAPPER", "BLACKFIN SNAPPER", "CUBERA SNAPPER", "SILK SNAPPER", "WENCHMAN")
-)),]
-
-Common <- c("RS", "GS","RG", "Gag", "YS", "VS", "LS", "GT", "GA", "HF", 
-            "MS", "SC", "BG", "AJ","BR", "GG", "BT", "SG", "SH", "SS", "LA", 
-            "YEG", "WG", "CS", "BS", "QS", "RHF", "SHF", "SPHF", "YFG", "YMG")
-
-Spe_labs <- levels(as.factor(Trip_Data$Species))
-Common <- gsub('\\b(\\pL)\\pL{2,}|.','\\U\\1',Spe_labs,perl = TRUE)
-Common[7] <- "Gag"
-Trip_Data$Common <- Common[match(Trip_Data$Species, Spe_labs)]
-Trip_Data$Species <- paste0(Trip_Data$Species," (", Trip_Data$Common, ")")
-Trip_Data$Species <- Trip_Data$Species%>%as.factor(.)%>%factor(., levels = paste0(Spe_labs," (", Common, ")"))
-Trip_Data$Common <- Trip_Data$Common%>%as.factor(.)%>%factor(., levels = Common)
-
-
-Trip_Data$Species <- Trip_Data$Species%>%as.factor(.)%>%factor(., levels = names(sort(tapply(Trip_Data$Trips, Trip_Data$Species, median), decreasing = T)))
-Trip_Data$Common <- Trip_Data$Common%>%as.factor(.)%>%factor(., levels = names(sort(tapply(Trip_Data$Trips, Trip_Data$Common, median), decreasing = T)))
-
-
-
-ggplot(Trip_Data)+
-  geom_boxplot(aes(x = Common, y = Trips, fill = Species)) +
-  theme(legend.position = "bottom", 
-        axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5),
-        axis.text = element_text(size = 11, color = 1),
-        strip.text = element_text(size = 12, margin = margin(0.2,0, 0.2,0, "cm")),
-        axis.title = element_text(size = 12),
-        legend.text = element_text(size = 11),
-        legend.title = element_text(size = 12))+
-  xlab("Species")+ylab("Annual anlger-trips")+labs(fill = "Key")+guides(fill = guide_legend(ncol = 4))
-ggsave("Hyman Figure 1.png", dpi = 600, device = "png")  
 #------------------------------------------------------------------------------#
 ## Figure  S1
 len <- dim(Mod$pred_Effort)[1]
@@ -294,7 +252,7 @@ ggarrange(Effort_diagnostics_scatter,Effort_diagnostics_dens, Effort_diagnostics
 ggsave("Hyman Figure S1.png", dpi = 600, device = "png")
 
 #------------------------------------------------------------------------------#
-## Figure  4 and 5
+## Figures  4 and 5
 ### Effort
 ggplot(Train)+
   geom_line(aes(x = as.Date(Date), y = (Trips)),show.legend = FALSE)+
@@ -345,7 +303,7 @@ Test%>%group_by(Prediction, Region)%>%
 #------------------------------------------------------------------------------#
 ## Effort Tables
 # NOTE: Data genertaed here are taken and subsequently inserted into latex 
-# tables produced in overleaf. The code below replicates the raw values but does
+# tables produced in Overleaf. The code below replicates the raw values but does
 # not create the complete data files needed (i.e., it doesn't create the 
 # decriptions).
 Train_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
@@ -356,11 +314,9 @@ Train_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
                                   Region*Fishable + 
                                   Region*sin1 + Region*sin2 + 
                                   Region*cos1 + Region*cos2 + 
-                                  Region*Gag_searches + 
-                                  Region*RS_searches + 
-                                  Region*RG_searches + 
+                                  Region*Grouper_searches + 
+                                  Region*Sannper_searches + 
                                   Region*FIR, data = na.omit(Train))
-
 
 #stan_dens(Effort_Model, pars = 'beta')
 betas <- Mod$beta%>%as.matrix()%>%as.data.frame()
@@ -378,9 +334,8 @@ Betas <- apply(betas, 2, function(x){
   grep("S_Gag", colnames(betas)),
   grep("S_RG", colnames(betas)),
   grep("S_RS", colnames(betas)),
-  grep("Gag_searches", colnames(betas)),
-  grep("RG_searches", colnames(betas)),
-  grep("RS_searches", colnames(betas)),
+  grep("Grouper_searches", colnames(betas)),
+  grep("Snapper_searches", colnames(betas)),
   grep("FIR", colnames(betas)),
   grep("Fishable", colnames(betas)),
   grep("sin1", colnames(betas)),
@@ -419,14 +374,11 @@ Effort_names_beta <- c("$PH$", "$PN$",
                        "$S_{RS}$",
                        "$PN:S_{RS}$",
                        
-                       "$G_{Gag}$", 
-                       "$PN:G_{Gag}$",
-                       
-                       "$G_{RG}$",  
-                       "$PN:G_{RG}$",
-                       
-                       "$G_{RS}$",  
-                       "$PN:G_{RS}$",
+                       "$G_{Grouper}$", 
+                       "$PN:G_{Gouper}$",
+                  
+                       "$G_{Snapper}$",  
+                       "$PN:G_{Snapper}$",
                        
                        "$R$", 
                        "$PN:R$",
@@ -453,11 +405,14 @@ rownames(Effort_supplemental_table1) <- NULL
 
 Signif <- ifelse(sign(as.numeric(Effort_supplemental_table1[,3])) == sign(as.numeric(Effort_supplemental_table1[,5])), "*", "")
 Effort_supplemental_table1[,2] <- paste0(Effort_supplemental_table1[,2], Signif)
+
+## Table S1
+### Betas coefficients for mu (raw)         
 print(xtable(Effort_supplemental_table1),only.contents=TRUE, include.rownames=FALSE, 
       include.colnames=T, floating=F, sanitize.rownames.function = identity,
       sanitize.text.function = identity)
 
-
+## rho and omega coefficients for sigma (raw) 
 rhos <- Mod$tau_effort%>%as.matrix()%>%as.data.frame()
 colnames(rhos) <- c("PH", "PN")
 rhos <- apply(rhos, 2, function(x){
@@ -484,9 +439,8 @@ Betas_main <- betas[,c(
   grep("S_Gag", colnames(betas)),
   grep("S_RG", colnames(betas)),
   grep("S_RS", colnames(betas)),
-  grep("Gag_searches", colnames(betas)),
-  grep("RG_searches", colnames(betas)),
-  grep("RS_searches", colnames(betas)),
+  grep("Grouper_searches", colnames(betas)),
+  grep("Snapper_searches", colnames(betas)),
   grep("FIR", colnames(betas)),
   grep("Fishable", colnames(betas)),
   grep("sin1", colnames(betas)),
@@ -514,11 +468,13 @@ PN_Beta_names <- paste0("$\\beta_{", gsub("\\$", "", Effort_names_beta[PN]), "}$
 Beta_main_table <- cbind(PH_Beta_names, Betas_main_PH,
                          PN_Beta_names, Betas_main_PN)
 
-
+## Table 2
+### Betas coefficients for mu by region   
 print(xtable(Beta_main_table),only.contents=TRUE, include.rownames=FALSE, 
       include.colnames=T, floating=F, sanitize.rownames.function = identity,
       sanitize.text.function = identity)
 
+### rho and omega coefficients for sigma by region
 rhos <- Mod$tau_effort%>%as.matrix()%>%as.data.frame()
 colnames(rhos) <- c("PH", "PN")
 rhos[,2] <- rhos[,1]+rhos[,2]
