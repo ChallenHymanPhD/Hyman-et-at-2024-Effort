@@ -128,8 +128,7 @@ for (i in 2004:2023){
   
 }
 
-
-
+setwd(DIRECTORY)
 write.csv(Effort_global, "MRIP_Hyman_2024_Effort.csv", row.names = F, quote = F)
 write.csv(Gag_global, "MRIP_Hyman_2024_Gag.csv", row.names = F)
 write.csv(RG_global, "MRIP_Hyman_2024_RG.csv", row.names = F)
