@@ -315,7 +315,7 @@ Train_mu_matrix <- model.matrix(~ Region*A_Gag_e + Region*A_RG_e +
                                   Region*sin1 + Region*sin2 + 
                                   Region*cos1 + Region*cos2 + 
                                   Region*Grouper_searches + 
-                                  Region*Sannper_searches + 
+                                  Region*Snapper_searches + 
                                   Region*FIR, data = na.omit(Train))
 
 #stan_dens(Effort_Model, pars = 'beta')
