@@ -1,9 +1,30 @@
-### Code to obtain fraction of Fishable days in Hyman et al 2024
-library(rnoaa)
-library(tidyverse)
+#------------------------------------------------------------------------------#
+################################### Description ################################
+#------------------------------------------------------------------------------#
+# This file is used to obtain fraction of fishable days, a predictor used
+# in Hyman et al 2024: Modeling effort in a multispecies recreational fishery; 
+# influence of species-specific temporal closures, relative abundance, and 
+# seasonality on angler-trips
+#
+# Required MRIP files can be downloaded directly from github.com via read.csv().
+# These files must be downloaded prior to running code below.
+#
+# The code below is annotated to explain to the user what each component 
+# line executes.
+#
+# This file was written by A. Challen Hyman, PhD, on March 23rd, 2024
+#------------------------------------------------------------------------------#
+##################################### Libraries ################################
+#------------------------------------------------------------------------------#
+suppressMessages(library(rnoaa))
+suppressMessages(library(tidyverse))
+
 # Suppress summarise info
 options(dplyr.summarise.inform = FALSE)
 
+# Set your directory where the files are stored (all in one folder)
+## Below is an example:
+# DIRECTORY <- 'C:/Users/ichal/Documents/Hyman gag grouper models/MRIP data'
 
 ## List of buoys desired for analysis
 Buoys <- c("42012",
@@ -44,11 +65,8 @@ for(j in 1:length(Buoys)){
     print(paste("Buoy", my_buoy, "in year", i, "is complete"))
   }
 }
-
-write.csv(Full_Data, "Fishable_days_all_stations_03_24.csv")
-
 Fishable <- Full_Data%>%group_by(Date, Region)%>%
   summarize(Speed = mean(speed, na.rm = T),
             Height = mean(height, na.rm = T))
-
+setwd(DIRECTORY)
 write.csv(Fishable, "Fishable_days_MRIP_03_24.csv")
