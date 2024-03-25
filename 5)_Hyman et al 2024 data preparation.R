@@ -34,26 +34,28 @@ suppressMessages(library(sp))
 
 #------------------------------------------------------------------------------#
 ## Load data
-Days <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Days_month_frac_2023.csv")[,-1]                ## Fraction of month open in given year
-SSB <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/SSB2.csv")                                      ## Spawning stock biomass from stock assessments
-IoA <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/IoA.csv")                                       ## Index of Abundance from interim assessments
-Fuel <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Florida%20gas.csv")                            ## Fuel prices
-Season <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Season%20length_2023.csv")                   ## Season lengths for each species by year
-Bags <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Bag%20limits.csv")                             ## Bag limits be species and year
-CPI <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Consumer%20price%20index.csv")                  ## Consumer price index
-GDP <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/FL_GDP.csv")                                    ## Florida GDP
-Income <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Income.csv")                                 ## Florida median income
-Inflation <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Inflation%20rate.csv")                    ## US inflation rate
-Fishable <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Fishable_days_MRIP_03_24.csv")             ## Fraction of fishable days by region
-Gag_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/Gag_searches.csv")                     ## Google searches for gag
-RG_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/RG_searches.csv")                       ## Google searches for red grouper
-RS_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/RS_searches.csv")                       ## Google searches for red snapper
+Days <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Days_month_frac_2023.csv")[,-1]                ## Fraction of month open in given year
+SSB <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/SSB2.csv")                                      ## Spawning stock biomass from stock assessments
+IoA <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/IoA.csv")                                       ## Index of Abundance from interim assessments
+Fuel <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Florida%20gas.csv")                            ## Fuel prices
+Season <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Season%20length_2023.csv")                   ## Season lengths for each species by year
+Bags <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Bag%20limits.csv")                             ## Bag limits be species and year
+CPI <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Consumer%20price%20index.csv")                  ## Consumer price index
+GDP <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/FL_GDP.csv")                                    ## Florida GDP
+Income <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Income.csv")                                 ## Florida median income
+Inflation <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Inflation%20rate.csv")                    ## US inflation rate
+Fishable <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Fishable_days_MRIP_03_24.csv")             ## Fraction of fishable days by region
+Gag_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Gag_searches.csv")                     ## Google searches for gag
+RG_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/RG_searches.csv")                       ## Google searches for red grouper
+RS_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/RS_searches.csv")                       ## Google searches for red snapper
+Grouper_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Grouper_Searches.csv")             ## Google searches for gag
+Snapper_Searches <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/Snapper_Searches.csv")             ## Google searches for red grouper
 
 ### Data
-Effort <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/MRIP_Hyman_2024_Effort.csv")
-Gag <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/MRIP_Hyman_2024_Gag.csv")
-RG <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/MRIP_Hyman_2024_RG.csv")
-RS <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/MRIP_Hyman_2024_RS.csv")
+Effort <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/MRIP_Hyman_2024_Effort.csv")
+Gag <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/MRIP_Hyman_2024_Gag.csv")
+RG <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/MRIP_Hyman_2024_RG.csv")
+RS <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/MRIP_Hyman_2024_RS.csv")
 #------------------------------------------------------------------------------#
 ## Format data
 Complete_data <- Effort
@@ -188,6 +190,11 @@ Complete_data$S_RGL <- (Complete_data$M_RG)*log(Complete_data$S_RG)
 Gag_Searches$Date <- as.Date(paste0(Gag_Searches$Month,"-01"))
 RS_Searches$Date <- as.Date(paste0(RS_Searches$Month,"-01"))
 RG_Searches$Date <- as.Date(paste0(RG_Searches$Month,"-01"))
+Grouper_Searches$Date <- as.Date(paste0(Grouper_Searches$Month,"-01"))
+Snapper_Searches$Date <- as.Date(paste0(Snapper_Searches$Month,"-01"))
+
+Complete_data$Snapper_searches <- Snapper_Searches$snapper...Florida.[match(Complete_data$Date, Snapper_Searches$Date)]
+Complete_data$Grouper_searches <- Grouper_Searches$grouper...Florida.[match(Complete_data$Date, Grouper_Searches$Date)]
 Complete_data$Gag_searches <- Gag_Searches$gag...Florida.[match(Complete_data$Date, Gag_Searches$Date)]
 Complete_data$RG_searches <- RG_Searches$red.grouper...Florida.[match(Complete_data$Date, RG_Searches$Date)]
 Complete_data$RS_searches <- RS_Searches$red.snapper...Florida.[match(Complete_data$Date, RS_Searches$Date)]
