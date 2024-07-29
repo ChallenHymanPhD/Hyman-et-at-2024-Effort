@@ -53,11 +53,13 @@ for(j in 1:length(Buoys)){
     if(class(data)[1] == "try-error"){
       next
     } else {
-      data <- as.data.frame(data[,c(1,2,3,5,7)]) ## date, lon, lat, wind speed, and wave height
+      data <- as.data.frame(data[,c(1,2,3,5,7,6, 13)]) ## date, lon, lat, wind speed, and wave height
       data$Date <- as.Date(data$time)
       data <- data%>%group_by(Date, lon, lat)%>% ## aggregate to day
         summarize(speed = mean(wind_spd, na.rm = T),
-                  height = mean(wave_height, na.rm = T))
+                  gust = mean(gust, na.rm = T),
+                  height = mean(wave_height, na.rm = T),
+                  SST = mean(sea_surface_temperature, na.rm = T))
       data$Buoy <- my_buoy
       data$Region <- Region[j]
       Full_Data <- rbind(Full_Data,data) ## bind to dataset
@@ -69,4 +71,4 @@ Fishable <- Full_Data%>%group_by(Date, Region)%>%
   summarize(Speed = mean(speed, na.rm = T),
             Height = mean(height, na.rm = T))
 setwd(DIRECTORY)
-write.csv(Fishable, "Fishable_days_MRIP_03_24.csv")
+write.csv(Fishable, "Fishable_days.csv")
