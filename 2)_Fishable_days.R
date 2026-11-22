@@ -68,7 +68,9 @@ for(j in 1:length(Buoys)){
   }
 }
 Fishable <- Full_Data%>%group_by(Date, Region)%>%
-  summarize(Speed = mean(speed, na.rm = T),
-            Height = mean(height, na.rm = T))
+  summarize(Speed  = mean(speed,  na.rm = T),
+            Height = mean(height, na.rm = T),
+            Gust   = mean(gust,   na.rm = T),
+            SST    = mean(SST,    na.rm = T))
 setwd(DIRECTORY)
-write.csv(Fishable, "Fishable_days.csv")
+write.csv(Fishable, "NOAABuoyData.csv")
