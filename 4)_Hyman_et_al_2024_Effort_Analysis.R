@@ -34,6 +34,7 @@ suppressMessages(library(RColorBrewer))
 suppressMessages(library(rstan))
 suppressMessages(library(cmdstanr))
 suppressMessages(library(forecast))
+suppressMessages(library(brms))
 
 ## Mapping
 suppressMessages(library(mapview))
@@ -90,7 +91,7 @@ My_theme <- function(){
 theme_set(My_theme())
 #------------------------------------------------------------------------------#
 ## Load data
-All_Data <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/main/MRIP%20Effort%20and%20Catch%20data.csv")
+All_Data <- read.csv("https://raw.githubusercontent.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/Data-Files/MRIP%20Effort%20and%20Catch%20data.csv")
 
 ### Format
 All_Data$Bag_gag[which(is.na(All_Data$Bag_gag))] <- 2
@@ -149,7 +150,7 @@ if(run_model ==T){
                            Region*sin2 + 
                            Region*cos1 +
                            Region*cos2),
-                      data = na.omit(Train), chains = 1, prior = Effort_prior, family = Gamma(link = "log"))
+                      data = na.omit(Train), chains = 4, iter = 2000, warmup = 1000, prior = Effort_prior, family = Gamma(link = "log"))
   
   saveRDS(Effort_Model, file = "Effort_Model.rds")
 } else {
