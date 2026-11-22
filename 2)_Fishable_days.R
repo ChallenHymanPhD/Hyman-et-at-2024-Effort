@@ -27,11 +27,10 @@ options(dplyr.summarise.inform = FALSE)
 # DIRECTORY <- 'C:/Users/ichal/Documents/Hyman gag grouper models/MRIP data'
 
 ## List of buoys desired for analysis
-Buoys <- c("42012",
+Buoys <- c("PACF1",
            "PCLF1",
            "PCBF1",
            "APCF1",
-           "SGOF1",
            "SHPF1",
            "KTNF1",
            "CKYF1",
@@ -39,9 +38,7 @@ Buoys <- c("42012",
            "FHPF1",
            "CWBF1",
            "42098",
-           "42013",
            "VENF1",
-           "BCGF1",
            "NPSF1")
 ## Set MRIP FL_reg region (in buoy order)
 Region <- c(1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2)
