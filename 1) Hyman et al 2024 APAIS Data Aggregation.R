@@ -25,10 +25,10 @@ suppressMessages(library(tidyverse))
 ################################### Instructions ###############################
 #------------------------------------------------------------------------------#
 #
-# Download MRIP data from the following address:
-# https://github.com/ChallenHymanPhD/Hyman-et-at-2024-Effort/tree/main
-# or you can download the files directly from MRIP at:
-# https://www.st.nmfs.noaa.gov/st1/recreational/MRIP_Survey_Data/
+# Download MRIP APAIS catch_YYYYW.csv and trip_YYYYW.csv files (2003-2023)
+# directly from NOAA Fisheries:
+# https://www.fisheries.noaa.gov/recreational-fishing-data/recreational-fishing-data-downloads
+# Unzip all files into a single folder and set DIRECTORY below.
 #
 # Next, set your directory where the files are stored (all in one folder)
 ## Below is an example:
