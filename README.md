@@ -82,7 +82,6 @@ Files are split across three branches:
 | `NOAABuoyData.csv` | Daily NOAA buoy wind and wave data by region |
 | `Gag juvenile indices.csv` | Gag juvenile abundance indices |
 | `MRIP-Survey-Variables-for-Web.xls` | MRIP variable definitions |
-| `MRIP data Hyman et al 2024.zip` | Raw MRIP files |
  
 ## Reproducing the analysis
  
